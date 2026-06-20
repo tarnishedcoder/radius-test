@@ -1,5 +1,112 @@
-⚔️ RADIUS Security Auditor & Compliance UtilityA lightweight, high-performance, active RADIUS (Remote Authentication Dial-In User Service) Client Simulator and security auditing tool written in Python.Unlike traditional security scanners, this tool does not require root/administrator privileges or external library dependencies (such as pyrad or Scapy). It communicates over native UDP sockets and features a custom-built cryptographic engine that manually implements the standard RFC 2865 password obfuscation algorithm (MD5 XOR chaining).🚀 Key FeaturesZero Dependencies: Runs on pure, vanilla Python 3. No external packet-crafting engines required.No Admin Privileges Needed: Operates entirely within user-space UDP sockets, making it perfect for lightweight containers, restricted testing environments, and automated pipelines.RFC 2865 Compliant Cryptography: Manually processes the MD5 XOR chaining algorithm using a 16-byte random authenticator vector to securely obfuscate passwords exactly like a real hardware network access server (NAS).Cryptographic Signature Verification: Verifies the server's reply authenticator signature against the expected MD5 hash to guarantee the authenticity of the response and validate the shared secret integrity.Advanced MFA Auditing: Explicitly parses and reports authentication states:Access-Accept (Success / Authorized Access)Access-Reject (Failed / Denied Credentials)Access-Challenge (MFA/2FA Active Prompt)Custom Security Headers: Emits customized transport signatures (X-HackerOne-Research: tarnished0ne) to support compliance, tracking, and threat attribution inside professional engagements.📦 InstallationSimply clone this repository. No virtual environment or package installation is necessary!git clone [https://github.com/yourusername/radius-security-auditor.git](https://github.com/yourusername/radius-security-auditor.git)
-cd radius-security-auditor
-🛠️ UsageExecute the auditor from your terminal by supplying the target IP address, user credentials, and the configured RADIUS shared secret:python radius_auditor.py -t <TARGET_IP> -u <USERNAME> -w <PASSWORD> -s <SHARED_SECRET>
-Argument ReferenceFlagArgumentDescriptionDefault-t--targetTarget IP address of the RADIUS server127.0.0.1-p--portTarget UDP port1812-u--username(Required) Username to testN/A-w--password(Required) Cleartext password to testN/A-s--secret(Required) The pre-shared key (Shared Secret)N/A-i--idTransaction Identifier (0-255)1Example Commandpython radius_auditor.py -t 192.168.1.50 -u administrator -w SecurePassword123! -s testing123
-🔍 Security Auditing Use Cases1. Shared Secret VerificationRADIUS traffic security depends entirely on the strength of the shared secret. If an organization is using a weak or default shared secret, an attacker can capture packets, brute-force the MD5 XOR key offline, and decrypt user passwords. This tool lets you actively verify if the shared secret in use is secure against dictionary lookups.2. Multi-Factor Authentication (MFA) AuditsBy parsing Access-Challenge (Code 11) responses, security analysts can easily verify which network entry points (like corporate VPNs or internal Wi-Fi access points) properly enforce MFA policies, and identify any accounts or groups triggering bypass vulnerabilities.3. Network Segmentation AuditingRun this script from a guest network or lower-privilege subnet. If the target RADIUS server on port 1812 answers your request (even with an Access-Reject), it reveals a critical network routing exposure, indicating that the internal auth gatekeeper is accessible to unauthorized zones.⚖️ Disclaimer & Ethical Use[!WARNING]This utility is developed solely for authorized penetration testing, security auditing, and academic research. Unauthorized testing of systems you do not own or have explicit written permission to audit is strictly illegal.Developed and maintained by tarnished0ne. All active network tests utilize unique tracking identifiers to comply with professional security research guidelines.
+# RADIUS Security Auditor & Compliance Utility
+
+A lightweight, high-performance RADIUS (Remote Authentication Dial-In User Service) client simulator and active security auditing tool written in Python.
+
+> ⚠️ WARNING: Only run this tool against systems you own or have explicit authorization to test. Unauthorized authentication attempts or scanning can be illegal and unethical.
+
+## Overview
+
+This repository contains a small utility to craft RFC 2865-compliant RADIUS Access-Request packets, send them to a target RADIUS server, and validate response authenticators using the shared secret.
+
+Use cases include diagnostics, testing RADIUS configurations in lab environments, and learning how RADIUS password obfuscation and authenticators work.
+
+## Features
+
+- Build Access-Request packets with User-Name and User-Password attributes
+- RFC 2865 password obfuscation (MD5-based, per the standard)
+- Send packets over UDP and measure round-trip time (RTT)
+- Verify Response Authenticator using the shared secret
+- Human-friendly colored terminal output
+- No external dependencies — uses the Python standard library
+
+## Requirements
+
+- Python 3.8 or later
+
+## Installation
+
+Clone the repository and run the script directly:
+
+```bash
+git clone https://github.com/tarnishedcoder/radius-test.git
+cd radius-test
+python3 radius_security_auditor.py -h
+```
+
+(Optional) Use a virtual environment if you prefer isolation.
+
+## Usage
+
+Basic invocation:
+
+```bash
+python3 radius_security_auditor.py -t <TARGET_IP> -u <USERNAME> -w <PASSWORD> -s <SHARED_SECRET>
+```
+
+Command-line options:
+
+- `-t`, `--target`  : Target IP address or hostname of the RADIUS server (default: `127.0.0.1`)
+- `-p`, `--port`    : Target UDP port (default: `1812`)
+- `-u`, `--username`: Username to test (required)
+- `-w`, `--password`: Cleartext password to test (required)
+- `-s`, `--secret`  : The shared secret configured on the server (required)
+- `-i`, `--id`      : Packet Identifier (0–255), default: `1`
+
+Example:
+
+```bash
+python3 radius_security_auditor.py -t 192.168.1.50 -u administrator -w "SecurePassword123!" -s testing123
+```
+
+## How it works (high level)
+
+1. The script generates a 16-byte Request Authenticator and encrypts the provided password per RFC 2865.
+2. It assembles a RADIUS Access-Request packet (header + attributes) and sends it over UDP to the target.
+3. On receiving a response, the script computes the expected Response Authenticator as:
+
+```
+MD5(Code + ID + Length + RequestAuthenticator + Attributes + SharedSecret)
+```
+
+and compares this value to the Authenticator field in the response to validate shared-secret alignment.
+
+## Output
+
+The script prints a concise Security Assessment Report including:
+
+- Response RTT (ms)
+- Transaction result: Access-Accept, Access-Reject, Access-Challenge, or other
+- Shared secret verification status (VALID / INVALID)
+
+## Security & Legal
+
+- Only test systems you own or have explicit permission to test.
+- Avoid rate-limiting or brute-force usage; this tool is intended for single-target diagnostics and learning.
+- Never commit real shared secrets or credentials to version control.
+
+## Contributing
+
+Contributions are welcome. Please open an issue for feature requests or bug reports, and submit pull requests for code changes. When adding features that affect packet construction or cryptography, include unit tests demonstrating RFC-conformant behavior.
+
+## Suggested Tests
+
+- Unit tests for `encrypt_radius_password` against known vectors
+- Tests that `craft_access_request` produces correct header length and TLV encoding
+- Tests for `verify_response_authenticator` that accept valid responses and reject tampered ones
+
+## Development Notes
+
+- The tool intentionally uses only the Python standard library for portability.
+- Password obfuscation follows RFC 2865 — keep shared secrets secure and rotate them as appropriate.
+
+## License
+
+No license is specified in the repository. If you want this project to be open source, add a LICENSE file (for example, MIT or Apache-2.0).
+
+---
+
+If you want, I can also:
+
+- Add example output to the README showing a sample assessment report.
+- Add instructions for setting up a local FreeRADIUS test lab.
+- Add a GitHub Actions workflow to run unit tests on push/PR.
