@@ -99,14 +99,3 @@ Contributions are welcome. Please open an issue for feature requests or bug repo
 - The tool intentionally uses only the Python standard library for portability.
 - Password obfuscation follows RFC 2865 — keep shared secrets secure and rotate them as appropriate.
 
-## License
-
-No license is specified in the repository. If you want this project to be open source, add a LICENSE file (for example, MIT or Apache-2.0).
-
----
-
-If you want, I can also:
-
-- Add example output to the README showing a sample assessment report.
-- Add instructions for setting up a local FreeRADIUS test lab.
-- Add a GitHub Actions workflow to run unit tests on push/PR.
